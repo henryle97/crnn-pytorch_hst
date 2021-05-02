@@ -82,8 +82,8 @@ class resizeNormalize(object):
 
 class processing_image(object):
     def __init__(self, size, is_padding=True):
-        self.img_H = size[1]
         self.max_W = size[0]
+        self.img_H = size[1]
         self.is_padding = is_padding
         self.toTensor = transforms.ToTensor()
 
@@ -91,7 +91,7 @@ class processing_image(object):
         """
 
         :param img: PIL
-        :return:
+        :return: tensor img
         """
         w, h = img.size
         new_w = int(self.img_H * float(w) / float(h))
