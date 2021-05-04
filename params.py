@@ -6,10 +6,10 @@ keep_ratio = False # whether to keep ratio for image resize
 manualSeed = 1234 # reproduce experiemnt
 random_sample = True # whether to sample the dataset with random sampler
 imgH = 32 # the height of the input image to network
-imgW = 256 # the width of the input image to network
+imgW = 150 # the width of the input image to network
 nh = 256 # size of the lstm hidden state
 nc = 1
-pretrained = 'expr/netCRNN_199_1000.pth' # path to pretrained model (to continue training)
+pretrained = '' # path to pretrained model (to continue training)
 expr_dir = 'expr' # where to store samples and models
 dealwith_lossnan = False # whether to replace all nan/inf in gradients to zero
 
@@ -26,7 +26,7 @@ saveInterval = 1000 # interval to save model
 n_val_disp = 10 # number of samples to display when val the model
 
 # finetune
-nepoch = 200 # number of epochs to train for
+nepoch = 500 # number of epochs to train for
 batchSize = 64 # input batch size
 lr = 0.0001 # learning rate for Critic, not used by adadealta
 beta1 = 0.5 # beta1 for adam. default=0.5
