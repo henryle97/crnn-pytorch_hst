@@ -104,7 +104,7 @@ class processing_image(object):
                 img = img.resize((new_w, self.img_H), Image.ANTIALIAS)
                 box_center = ((self.max_W - new_w) // 2, 0)
 
-                new_img = Image.new('RGB', (self.max_W, self.img_H), 'white')  # padding white
+                new_img = Image.new('L', (self.max_W, self.img_H), 'white')  # padding white
                 new_img.paste(img, box=box_center)
                 img = new_img
 

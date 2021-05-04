@@ -18,6 +18,7 @@ import dataset
 import models.crnn as net
 import params
 from aug import ImgAugTransform
+import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-train', '--trainroot', required=True, help='path to train dataset')
@@ -61,9 +62,9 @@ def data_loader():
     assert val_dataset
     val_loader = torch.utils.data.DataLoader(val_dataset, shuffle=False, batch_size=params.batchSize, num_workers=int(params.workers))
     
-    return train_loader, val_loader
+    return train_loader, val_loader, train_dataset, val_dataset
 
-train_loader, val_loader = data_loader()
+train_loader, val_loader, train_dataset, val_dataset = data_loader()
 
 # -----------------------------------------------
 """
@@ -179,9 +180,11 @@ if params.dealwith_lossnan:
 
 # -----------------------------------------------
 
-def val(net, criterion):
-    print('Start val')
+def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
+    if show_error and not os.path.exists(img_check_dir):
+        os.makedirs(img_check_dir, exist_ok=True)
 
+    print('Start val')
     for p in crnn.parameters():
         p.requires_grad = False
 
@@ -193,6 +196,7 @@ def val(net, criterion):
     loss_avg = utils.averager() # The blobal loss_avg is used by train
 
     max_iter = len(val_loader)
+    errors = []
     for i in range(max_iter):
         data = val_iter.next()
         i += 1
@@ -214,16 +218,25 @@ def val(net, criterion):
         cpu_texts_decode = []
         for i in cpu_texts:
             cpu_texts_decode.append(i.decode('utf-8', 'strict'))
-        for pred, target in zip(sim_preds, cpu_texts_decode):
+        for idx,  (pred, target) in enumerate(zip(sim_preds, cpu_texts_decode)):
             if pred == target:
                 n_correct += 1
+            else:
+                if show_error:
+
+                    errors.append([pred, target])
+                    cv2.imwrite('DATA/img_check/' + str(idx) + "_" + str(target) + ".jpg", image[idx].cpu().mul_(0.5).add_(0.5).permute(1, 2, 0).numpy()* 255.0)
 
     raw_preds = converter.decode(preds.data, preds_size.data, raw=True)[:params.n_val_disp]
     for raw_pred, pred, gt in zip(raw_preds, sim_preds, cpu_texts_decode):
         print('%-20s => %-20s, gt: %-20s' % (raw_pred, pred, gt))
 
-    accuracy = n_correct / float(max_iter * params.batchSize)
+    accuracy = n_correct / float(len(val_dataset))
     print('Val loss: %f, accuray: %f' % (loss_avg.val(), accuracy))
+
+    if show_error:
+        for error in errors:
+            print('pred: %-20s  - gt: %-20s' % (error[0], error[1]))
 
 
 def train(net, criterion, optimizer, train_iter):
@@ -248,24 +261,57 @@ def train(net, criterion, optimizer, train_iter):
     optimizer.step()
     return cost
 
+def visual_data(is_train=True):
+    if is_train:
+        data_vis = train_loader
+    else:
+        data_vis = val_loader
+
+    ncols = 5
+    nrows = int(math.ceil(sample / ncols))
+    fig, ax = plt.subplots(nrows, ncols, figsize=(12, 12))
+
+    num_plots = 0
+    for idx, batch in enumerate(data_vis):
+        for vis_idx in range(len(batch)):
+            row = num_plots // ncols
+            col = num_plots % ncols
+
+            img = batch[0][vis_idx].numpy().transpose(1, 2, 0)
+            sent = batch[1]
+
+            ax[row, col].imshow(img)
+            ax[row, col].set_title("Label: {: <2}".format(sent), fontsize=16, color='g')
+
+            ax[row, col].get_xaxis().set_ticks([])
+            ax[row, col].get_yaxis().set_ticks([])
+
+            num_plots += 1
+            if num_plots >= sample:
+                plt.subplots_adjust()
+                fig.savefig('vis_dataset.png')
+                return
+
+
 
 if __name__ == "__main__":
-    for epoch in range(params.nepoch):
-        train_iter = iter(train_loader)
-        i = 0
-        while i < len(train_loader):
-            cost = train(crnn, criterion, optimizer, train_iter)
-            loss_avg.add(cost)
-            i += 1
+    val(crnn, criterion, show_error=True)
+    # for epoch in range(params.nepoch):
+    #     train_iter = iter(train_loader)
+    #     i = 0
+    #     while i < len(train_loader):
+    #         cost = train(crnn, criterion, optimizer, train_iter)
+    #         loss_avg.add(cost)
+    #         i += 1
 
-            if i % params.displayInterval == 0:
-                print('[%d/%d][%d/%d] Loss: %f' %
-                      (epoch, params.nepoch, i, len(train_loader), loss_avg.val()))
-                loss_avg.reset()
+    #         if i % params.displayInterval == 0:
+    #             print('[%d/%d][%d/%d] Loss: %f' %
+    #                   (epoch, params.nepoch, i, len(train_loader), loss_avg.val()))
+    #             loss_avg.reset()
 
-            if i % params.valInterval == 0:
-                val(crnn, criterion)
+    #         if i % params.valInterval == 0:
+    #             val(crnn, criterion)
 
-            # do checkpointing
-            if i % params.saveInterval == 0:
-                torch.save(crnn.state_dict(), '{0}/netCRNN_{1}_{2}.pth'.format(params.expr_dir, epoch, i))
+    #         # do checkpointing
+    #         if i % params.saveInterval == 0:
+    #             torch.save(crnn.state_dict(), '{0}/netCRNN_{1}_{2}.pth'.format(params.expr_dir, epoch, i))
