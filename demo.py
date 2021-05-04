@@ -14,6 +14,8 @@ import cv2
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--model_path', type = str, required = True, help = 'crnn model path')
 parser.add_argument('-i', '--image_dir', type = str, required = True, help = 'demo image path')
+parser.add_argument('-check', action='store-true', default=False, help = 'demo image path')
+
 args = parser.parse_args()
 
 model_path = args.model_path
@@ -39,9 +41,9 @@ converter = utils.strLabelConverter(params.alphabet)
 transformer = dataset.processing_image((params.imgW, params.imgH))
 for image_path in image_paths:
     image = Image.open(image_path).convert('L')
-    print(image.size)
     image = transformer(image)
-    cv2.imwrite('DATA/img_check/' + os.path.basename(image_path) + ".jpg", image.mul_(0.5).add_(0.5).permute(1, 2, 0).numpy()* 255.0)
+    if args.check: 
+        cv2.imwrite('DATA/img_check/' + os.path.basename(image_path) + ".jpg", image.mul_(0.5).add_(0.5).permute(1, 2, 0).numpy()* 255.0)
 
     if torch.cuda.is_available():
         image = image.cuda()

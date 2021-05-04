@@ -21,6 +21,7 @@ from aug import ImgAugTransform
 import cv2
 import math
 import matplotlib.pyplot as plt
+from tool.logger import Logger
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-train', '--trainroot', required=True, help='path to train dataset')
@@ -38,6 +39,9 @@ np.random.seed(params.manualSeed)
 torch.manual_seed(params.manualSeed)
 
 cudnn.benchmark = True
+
+# Logger
+logger = Logger(log_dir=params.expr_dir)
 
 if torch.cuda.is_available() and not params.cuda:
     print("WARNING: You have a CUDA device, so you should probably set cuda in params.py to True")
@@ -64,7 +68,7 @@ def data_loader():
     # val
     val_dataset = dataset.lmdbDataset(root=args.valroot, transform=dataset.processing_image((params.imgW, params.imgH)))
     assert val_dataset
-    val_loader = torch.utils.data.DataLoader(val_dataset, shuffle=False, batch_size=params.batchSize, num_workers=int(params.workers))
+    val_loader = torch.utils.data.DataLoader(val_dataset, shuffle=True, batch_size=params.batchSize, num_workers=int(params.workers))
     
     return train_loader, val_loader, train_dataset, val_dataset
 
@@ -107,6 +111,7 @@ In this block
 """
 # Compute average for `torch.Variable` and `torch.Tensor`.
 loss_avg = utils.averager()
+best_acc = -1e5
 
 # Convert between str and label.
 converter = utils.strLabelConverter(params.alphabet)
@@ -233,10 +238,15 @@ def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
 
     raw_preds = converter.decode(preds.data, preds_size.data, raw=True)[:params.n_val_disp]
     for raw_pred, pred, gt in zip(raw_preds, sim_preds, cpu_texts_decode):
-        print('%-20s => %-20s, gt: %-20s' % (raw_pred, pred, gt))
+        info = '%-20s => %-20s, gt: %-20s' % (raw_pred, pred, gt)
+        logger.info(info)
 
     accuracy = n_correct / float(len(val_dataset))
-    print('Val loss: %f, accuray: %f' % (loss_avg.val(), accuracy))
+    if accuracy > best_acc:
+        best_acc = accuracy
+        torch.save(crnn.state_dict(), os.path.join(params.expr_dir, 'best.pth'))
+    info = '[Epoch %d/%d]: Val loss: %f, accuray: %f, best_acc: %-10f \n %f' % (epoch, params.nepoch, loss_avg.val(), accuracy, best_acc, '='*100)
+    logger.info(info)
 
     if show_error:
         for error in errors:
@@ -315,8 +325,8 @@ if __name__ == "__main__":
                 i += 1
 
                 if i % params.displayInterval == 0:
-                    print('[%d/%d][%d/%d] Loss: %f' %
-                        (epoch, params.nepoch, i, len(train_loader), loss_avg.val()))
+                    infor = '[%d/%d][%d/%d] Loss: %f' % (epoch, params.nepoch, i, len(train_loader), loss_avg.val())
+                    logger.info(infor)
                     loss_avg.reset()
 
                 if i % params.valInterval == 0:
@@ -325,3 +335,5 @@ if __name__ == "__main__":
                 # do checkpointing
                 if i % params.saveInterval == 0:
                     torch.save(crnn.state_dict(), '{0}/netCRNN_{1}_{2}.pth'.format(params.expr_dir, epoch, i))
+
+            torch.save(crnn.state_dict(), os.path.join(params.expr_dir, 'last.pth'))
