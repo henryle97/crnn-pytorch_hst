@@ -9,3 +9,5 @@
 *.mdb
 *__pycache__/
 *.vscode/
+DATA/*
+expr/*
