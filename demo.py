@@ -8,6 +8,8 @@ import models.crnn as crnn
 import params
 import argparse
 import glob
+import os
+import cv2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--model_path', type = str, required = True, help = 'crnn model path')
@@ -34,10 +36,13 @@ model.eval()
 
 converter = utils.strLabelConverter(params.alphabet)
 
-transformer = dataset.resizeNormalize((params.imgW, params.imgH))
+transformer = dataset.processing_image((params.imgW, params.imgH))
 for image_path in image_paths:
     image = Image.open(image_path).convert('L')
+    print(image.size)
     image = transformer(image)
+    cv2.imwrite('DATA/img_check/' + os.path.basename(image_path) + ".jpg", image.mul_(0.5).add_(0.5).permute(1, 2, 0).numpy()* 255.0)
+
     if torch.cuda.is_available():
         image = image.cuda()
     image = image.view(1, *image.size())
