@@ -19,10 +19,14 @@ import models.crnn as net
 import params
 from aug import ImgAugTransform
 import cv2
+import math
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-train', '--trainroot', required=True, help='path to train dataset')
 parser.add_argument('-val', '--valroot', required=True, help='path to val dataset')
+parser.add_argument('-error', action='store_true', default=False)
+parser.add_argument('-vis_data', action='store_true', default=False)
 args = parser.parse_args()
 
 if not os.path.exists(params.expr_dir):
@@ -261,7 +265,7 @@ def train(net, criterion, optimizer, train_iter):
     optimizer.step()
     return cost
 
-def visual_data(is_train=True):
+def visual_data(is_train=True, sample=20):
     if is_train:
         data_vis = train_loader
     else:
@@ -278,9 +282,9 @@ def visual_data(is_train=True):
             col = num_plots % ncols
 
             img = batch[0][vis_idx].numpy().transpose(1, 2, 0)
-            sent = batch[1]
+            sent = batch[1][vis_idx].decode('utf-8', 'strict')
 
-            ax[row, col].imshow(img)
+            ax[row, col].imshow(img, cmap='gray')
             ax[row, col].set_title("Label: {: <2}".format(sent), fontsize=16, color='g')
 
             ax[row, col].get_xaxis().set_ticks([])
@@ -289,13 +293,19 @@ def visual_data(is_train=True):
             num_plots += 1
             if num_plots >= sample:
                 plt.subplots_adjust()
-                fig.savefig('vis_dataset.png')
+                fig.savefig(params.expr_dir + '/vis_dataset.png')
                 return
 
 
 
 if __name__ == "__main__":
-    val(crnn, criterion, show_error=True)
+    
+    if args.error:
+        val(crnn, criterion, show_error=True)
+    if args.vis_data:
+        visual_data(is_train=True)
+
+
     # for epoch in range(params.nepoch):
     #     train_iter = iter(train_loader)
     #     i = 0
