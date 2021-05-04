@@ -7,14 +7,17 @@ from PIL import Image
 import models.crnn as crnn
 import params
 import argparse
+import glob
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--model_path', type = str, required = True, help = 'crnn model path')
-parser.add_argument('-i', '--image_path', type = str, required = True, help = 'demo image path')
+parser.add_argument('-i', '--image_dir', type = str, required = True, help = 'demo image path')
 args = parser.parse_args()
 
 model_path = args.model_path
-image_path = args.image_path
+image_paths = glob.glob(args.image_dir + "/*.jpg")
+
+
 
 # net init
 nclass = len(params.alphabet) + 1
@@ -27,24 +30,25 @@ print('loading pretrained model from %s' % model_path)
 if params.multi_gpu:
     model = torch.nn.DataParallel(model)
 model.load_state_dict(torch.load(model_path))
+model.eval()
 
 converter = utils.strLabelConverter(params.alphabet)
 
-transformer = dataset.resizeNormalize((100, 32))
-image = Image.open(image_path).convert('L')
-image = transformer(image)
-if torch.cuda.is_available():
-    image = image.cuda()
-image = image.view(1, *image.size())
-image = Variable(image)
+transformer = dataset.resizeNormalize((params.imgW, params.imgH))
+for image_path in image_paths:
+    image = Image.open(image_path).convert('L')
+    image = transformer(image)
+    if torch.cuda.is_available():
+        image = image.cuda()
+    image = image.view(1, *image.size())
+    image = Variable(image)
 
-model.eval()
-preds = model(image)
+    preds = model(image)
 
-_, preds = preds.max(2)
-preds = preds.transpose(1, 0).contiguous().view(-1)
+    _, preds = preds.max(2)
+    preds = preds.transpose(1, 0).contiguous().view(-1)
 
-preds_size = Variable(torch.LongTensor([preds.size(0)]))
-raw_pred = converter.decode(preds.data, preds_size.data, raw=True)
-sim_pred = converter.decode(preds.data, preds_size.data, raw=False)
-print('%-20s => %-20s' % (raw_pred, sim_pred))
+    preds_size = Variable(torch.LongTensor([preds.size(0)]))
+    raw_pred = converter.decode(preds.data, preds_size.data, raw=True)
+    sim_pred = converter.decode(preds.data, preds_size.data, raw=False)
+    print('Text in %-80s is:  %-20s' % (image_path, sim_pred))
