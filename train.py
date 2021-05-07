@@ -73,6 +73,8 @@ def data_loader():
     return train_loader, val_loader, train_dataset, val_dataset
 
 train_loader, val_loader, train_dataset, val_dataset = data_loader()
+info = 'Num traing samples: %d \n Num valid samples: %d \n %s ' % (len(train_dataset) , len(val_dataset), '=' * 100)
+
 
 # -----------------------------------------------
 """
@@ -102,7 +104,7 @@ def net_init():
     return crnn
 
 crnn = net_init()
-print(crnn)
+logger.info(crnn)
 
 # -----------------------------------------------
 """
@@ -190,6 +192,7 @@ if params.dealwith_lossnan:
 # -----------------------------------------------
 
 def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
+    global best_acc
     if show_error and not os.path.exists(img_check_dir):
         os.makedirs(img_check_dir, exist_ok=True)
 
@@ -221,8 +224,11 @@ def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
         cost = criterion(preds, text, preds_size, length) / batch_size
         loss_avg.add(cost)
 
-        _, preds = preds.max(2)
-        preds = preds.transpose(1, 0).contiguous().view(-1)
+        # from IPython import embed; embed()
+        preds_exp = preds.exp()  # log_softmax -> softmax : SxBxC
+        max_probs, preds = preds_exp.max(2)
+        probs = max_probs.cumprod(0)[-1].cpu().numpy()
+        preds = preds.transpose(1, 0).contiguous().view(-1)  # 1D  # BXSXC
         sim_preds = converter.decode(preds.data, preds_size.data, raw=False)
         cpu_texts_decode = []
         for i in cpu_texts:
@@ -237,15 +243,15 @@ def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
                     cv2.imwrite('DATA/img_check/' + str(idx) + "_" + str(target) + ".jpg", image[idx].cpu().mul_(0.5).add_(0.5).permute(1, 2, 0).numpy()* 255.0)
 
     raw_preds = converter.decode(preds.data, preds_size.data, raw=True)[:params.n_val_disp]
-    for raw_pred, pred, gt in zip(raw_preds, sim_preds, cpu_texts_decode):
-        info = '%-20s => %-20s, gt: %-20s' % (raw_pred, pred, gt)
+    for raw_pred, pred, gt, prob in zip(raw_preds, sim_preds, cpu_texts_decode, probs):
+        info = '%-20s ==> %-10s || Label: %-10s || prob: %-6.4f' % (raw_pred, pred, gt, prob)
         logger.info(info)
 
     accuracy = n_correct / float(len(val_dataset))
     if accuracy > best_acc:
         best_acc = accuracy
         torch.save(crnn.state_dict(), os.path.join(params.expr_dir, 'best.pth'))
-    info = '[Epoch %d/%d]: Val loss: %f, accuray: %f, best_acc: %-10f \n %f' % (epoch, params.nepoch, loss_avg.val(), accuracy, best_acc, '='*100)
+    info = '[Epoch %d/%d]: Val loss: %f, accuray: %f, best_acc: %-10f \n %s' % (epoch, params.nepoch, loss_avg.val(), accuracy, best_acc, '='*100)
     logger.info(info)
 
     if show_error:
@@ -325,7 +331,7 @@ if __name__ == "__main__":
                 i += 1
 
                 if i % params.displayInterval == 0:
-                    infor = '[%d/%d][%d/%d] Loss: %f' % (epoch, params.nepoch, i, len(train_loader), loss_avg.val())
+                    infor = '[Epoch %d/%d][Iter %d/%d] Loss: %f' % (epoch, params.nepoch, i, len(train_loader), loss_avg.val())
                     logger.info(infor)
                     loss_avg.reset()
 

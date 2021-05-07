@@ -59,6 +59,7 @@ class lmdbDataset(Dataset):
 
             label_key = 'label-%09d' % index
             label = txn.get(label_key.encode('utf-8'))
+            # label = label.decode('utf-8').replace(" ", "").encode('utf-8')
 
             if self.target_transform is not None:
                 label = self.target_transform(label)

@@ -9,8 +9,8 @@ imgH = 32 # the height of the input image to network
 imgW = 150 # the width of the input image to network
 nh = 256 # size of the lstm hidden state
 nc = 1
-pretrained = '' # path to pretrained model (to continue training)
-expr_dir = 'expr/exp_width150' # where to store samples and models
+pretrained = 'expr/exp_width150/netCRNN_294_1000.pth' # path to pretrained model (to continue training)
+expr_dir = 'expr/exp_width150_v2' # where to store samples and models
 dealwith_lossnan = False # whether to replace all nan/inf in gradients to zero
 
 # hardware
