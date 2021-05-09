@@ -1,5 +1,10 @@
 import alphabets
 
+#data 
+train_roots = ['DATA/data_real_lis/train_real_lis']
+val_roots = ['DATA/data_real_lis/val_real_lis']
+
+
 # about data and net
 alphabet = alphabets.alphabet
 keep_ratio = False # whether to keep ratio for image resize
@@ -9,8 +14,9 @@ imgH = 32 # the height of the input image to network
 imgW = 150 # the width of the input image to network
 nh = 256 # size of the lstm hidden state
 nc = 1
-pretrained = 'expr/exp_width150/netCRNN_294_1000.pth' # path to pretrained model (to continue training)
-expr_dir = 'expr/exp_width150_v2' # where to store samples and models
+pretrained = 'expr/exp_width150_with_real/netCRNN_99_100.pth' # path to pretrained model (to continue training)
+# pretrained = ''
+expr_dir = 'expr/exp_width150_with_real' # where to store samples and models
 dealwith_lossnan = False # whether to replace all nan/inf in gradients to zero
 
 # hardware
@@ -21,14 +27,14 @@ workers = 4 # number of data loading workers
 
 # training process
 displayInterval = 100 # interval to be print the train loss
-valInterval = 1000 # interval to val the model loss and accuray
-saveInterval = 1000 # interval to save model
+valInterval = 100 # interval to val the model loss and accuray
+saveInterval = 100 # interval to save model
 n_val_disp = 10 # number of samples to display when val the model
 
 # finetune
-nepoch = 500 # number of epochs to train for
+nepoch = 100 # number of epochs to train for
 batchSize = 64 # input batch size
-lr = 0.0001 # learning rate for Critic, not used by adadealta
+lr = 0.00001 # learning rate for Critic, not used by adadealta
 beta1 = 0.5 # beta1 for adam. default=0.5
 adam = False # whether to use adam (default is rmsprop)
 adadelta = False # whether to use adadelta (default is rmsprop)

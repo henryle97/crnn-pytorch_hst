@@ -144,5 +144,5 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(model_path))
     model.eval()
 
-    # testing(model, input_dir=args.image_dir)
-    pseudo_label_batch(model, input_dir=args.image_dir, output_file='license_pseudo_2.txt')
+    testing(model, input_dir=args.image_dir)
+    # pseudo_label_batch(model, input_dir=args.image_dir, output_file='license_pseudo_2.txt')

@@ -28,9 +28,14 @@ files = {
     'high': open(save_dir + "/" + 'high.txt', 'w')
 }
 
+def sort_by_key(arr):
+    return sorted(arr, key= lambda item: float(line.split(sep)[-1]))
+
 def process(write_txt=False)):
     with open(pseudo_label_path, 'r', encoding='utf-8') as f:
         lines = [line.strip() for line in f.readlines()]
+
+    lines = sort_by_key(lines)
 
     for line in tqdm.tqdm(lines):
         img_path, label, prob = line.split(sep)

@@ -47,7 +47,11 @@ class strLabelConverter(object):
             length.append(len(item))
             r = []
             for char in item:
-                index = self.dict[char]
+                try:
+                    index = self.dict[char]
+                except:
+                    print("Item error: ", item)
+                    continue
                 # result.append(index)
                 r.append(index)
             result.append(r)

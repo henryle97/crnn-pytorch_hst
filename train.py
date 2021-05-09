@@ -24,8 +24,6 @@ import matplotlib.pyplot as plt
 from tool.logger import Logger
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-train', '--trainroot', required=True, help='path to train dataset')
-parser.add_argument('-val', '--valroot', required=True, help='path to val dataset')
 parser.add_argument('-error', action='store_true', default=False)
 parser.add_argument('-vis_data', action='store_true', default=False)
 args = parser.parse_args()
@@ -54,7 +52,13 @@ In this block
 def data_loader():
     # train
     train_transform = ImgAugTransform()
-    train_dataset = dataset.lmdbDataset(root=args.trainroot, transform=train_transform)
+
+    train_datasets = []
+    for train_root in params.train_roots:
+        train_dataset = dataset.lmdbDataset(root=train_root, transform=train_transform)
+        train_datasets.append(train_dataset)
+    train_dataset = torch.utils.data.ConcatDataset(train_datasets)
+
     assert train_dataset
     if not params.random_sample:
         sampler = dataset.randomSequentialSampler(train_dataset, params.batchSize)
@@ -66,7 +70,12 @@ def data_loader():
             collate_fn=dataset.alignCollate(imgH=params.imgH, imgW=params.imgW, keep_ratio=params.keep_ratio))
     
     # val
-    val_dataset = dataset.lmdbDataset(root=args.valroot, transform=dataset.processing_image((params.imgW, params.imgH)))
+    val_dataset_list = []
+    for val_root in params.val_roots:
+        val_dataset = dataset.lmdbDataset(root=val_root, transform=dataset.processing_image((params.imgW, params.imgH)))
+        val_dataset_list.append(val_dataset)
+
+    val_dataset = torch.utils.data.ConcatDataset(val_dataset_list)
     assert val_dataset
     val_loader = torch.utils.data.DataLoader(val_dataset, shuffle=True, batch_size=params.batchSize, num_workers=int(params.workers))
     
@@ -192,7 +201,7 @@ if params.dealwith_lossnan:
 # -----------------------------------------------
 
 def val(net, criterion, show_error=False, img_check_dir='DATA/img_check'):
-    global best_acc
+    global best_acc, epoch
     if show_error and not os.path.exists(img_check_dir):
         os.makedirs(img_check_dir, exist_ok=True)
 
@@ -317,6 +326,7 @@ def visual_data(is_train=True, sample=20):
 if __name__ == "__main__":
     
     if args.error:
+        epoch=1
         val(crnn, criterion, show_error=True)
     elif args.vis_data:
         visual_data(is_train=True)
